@@ -289,7 +289,9 @@ def EmitC_CallOpaqueOp : EmitC_Op<"call_opaque", [CExpression]> {
     Arg<StrAttr, "the C++ function to call">:$callee,
     Arg<OptionalAttr<ArrayAttr>, "the order of operands and further attributes">:$args,
     Arg<OptionalAttr<ArrayAttr>, "template arguments">:$template_args,
-    Variadic<EmitCType>:$operands
+    Variadic<EmitCType>:$operands,
+    Arg<OptionalAttr<SymbolNameAttr>, "the name of the variable that gets assigned the return value">:$sym_name,
+    Arg<UnitAttr, "if specified, omits the assign prefix">:$omit_assign_prefix
   );
   let results = (outs Variadic<EmitCType>);
   let builders = [
@@ -297,16 +299,18 @@ def EmitC_CallOpaqueOp : EmitC_Op<"call_opaque", [CExpression]> {
       "::mlir::TypeRange":$resultTypes,
       "::llvm::StringRef":$callee,
       "::mlir::ValueRange":$operands,
+      CArg<"::llvm::StringRef", "{}">:$name,
+      CArg<"bool", "false">:$omitAssignPrefix,
       CArg<"::mlir::ArrayAttr", "{}">:$args,
       CArg<"::mlir::ArrayAttr", "{}">:$template_args), [{
         build($_builder, $_state, resultTypes, callee, args, template_args,
-            operands);
+            operands, $_builder.getStringAttr(name), omitAssignPrefix);
       }]
     >
   ];
 
   let assemblyFormat = [{
-    $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
+    (`noassign` $omit_assign_prefix^)? $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
   }];
   let hasVerifier = 1;
 }
@@ -1172,7 +1176,7 @@ def EmitC_VariableOp : EmitC_Op<"variable", []> {
     ```
   }];
 
-  let arguments = (ins EmitC_OpaqueOrTypedAttr:$value);
+  let arguments = (ins EmitC_OpaqueOrTypedAttr:$value, OptionalAttr<SymbolNameAttr>:$sym_name);
   let results = (outs Res<AnyTypeOf<[EmitC_ArrayType, EmitC_LValueType]>, "",
                           [MemAlloc<DefaultResource, 0, FullEffect>]>);
 

@@ -69,8 +69,8 @@ createVariablesForResults(T op, const TypeConverter *typeConverter,
       return rewriter.notifyMatchFailure(op, "result type conversion failed");
     Type varType = emitc::LValueType::get(resultType);
     emitc::OpaqueAttr noInit = emitc::OpaqueAttr::get(context, "");
-    emitc::VariableOp var =
-        rewriter.create<emitc::VariableOp>(loc, varType, noInit);
+    emitc::VariableOp var = rewriter.create<emitc::VariableOp>(
+        loc, varType, noInit, /*sym_name=*/nullptr);
     resultVariables.push_back(var);
   }
 

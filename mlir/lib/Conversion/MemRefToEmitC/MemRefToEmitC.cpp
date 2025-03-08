@@ -45,7 +45,8 @@ struct ConvertAlloca final : public OpConversionPattern<memref::AllocaOp> {
       return rewriter.notifyMatchFailure(op.getLoc(), "cannot convert type");
     }
     auto noInit = emitc::OpaqueAttr::get(getContext(), "");
-    rewriter.replaceOpWithNewOp<emitc::VariableOp>(op, resultTy, noInit);
+    rewriter.replaceOpWithNewOp<emitc::VariableOp>(op, resultTy, noInit,
+                                                   /*sym_name=*/nullptr);
     return success();
   }
 };

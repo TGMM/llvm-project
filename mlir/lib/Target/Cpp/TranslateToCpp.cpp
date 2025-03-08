@@ -1242,10 +1242,18 @@ void CppEmitter::cacheDeferredOpResult(Value value, StringRef str) {
 /// Return the existing or a new name for a Value.
 StringRef CppEmitter::getOrCreateName(Value val) {
   if (!valueMapper.count(val)) {
-    assert(!hasDeferredEmission(val.getDefiningOp()) &&
+    auto valOp = val.getDefiningOp();
+    assert(!hasDeferredEmission(valOp) &&
            "cacheDeferredOpResult should have been called on this value, "
            "update the emitOperation function.");
-    valueMapper.insert(val, formatv("v{0}", ++valueInScopeCount.top()));
+
+    auto symNameAttr = valOp->getAttrOfType<StringAttr>("sym_name");
+
+    if (symNameAttr != nullptr && symNameAttr.getValue() != "") {
+      valueMapper.insert(val, symNameAttr.str());
+    } else {
+      valueMapper.insert(val, formatv("v{0}", ++valueInScopeCount.top()));
+    }
   }
   return *valueMapper.begin(val);
 }
@@ -1540,8 +1548,12 @@ LogicalResult CppEmitter::emitGlobalVariable(GlobalOp op) {
 }
 
 LogicalResult CppEmitter::emitAssignPrefix(Operation &op) {
-  // If op is being emitted as part of an expression, bail out.
-  if (getEmittedExpression())
+  bool shouldOmitAssignPrefix =
+      op.getAttrOfType<UnitAttr>("omit_assign_prefix") != nullptr;
+
+  // If op is being emitted as part of an expression
+  // or omit_assign_prefix attribute is set to true, bail out.
+  if (getEmittedExpression() || shouldOmitAssignPrefix)
     return success();
 
   switch (op.getNumResults()) {
